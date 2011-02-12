@@ -100,17 +100,25 @@ RaptorMainWindow::RaptorMainWindow(QWidget* parent, Qt::WindowFlags f)
         if (install)
         {
             QString pkg = pkgs.at(0);
-            if(pkg.contains("://"))
+            if(pkg.endsWith(".deb"))
             {
                 QUrl url(pkg);
-                QString pkgFile = url.path();
-                int index = pkgFile.lastIndexOf('/');
-                if(index >= 0)
+                QString pkgFile = pkg;
+                QString scheme = url.scheme();
+                if(scheme.count() == 0 || scheme == "file")
                 {
-                    pkgFile.remove(0, index + 1);
+                    script1 = "dpkg -i " + pkgFile;
                 }
-                script1 = "cd /tmp && rm -f /tmp/" + pkgFile + " && wget " + pkg;
-                script2 = "dpkg -i /tmp/" + pkgFile + " && rm -f " + pkgFile;
+                else
+                {
+                    int index = pkgFile.lastIndexOf('/');
+                    if(index >= 0)
+                    {
+                        pkgFile.remove(0, index + 1);
+                    }
+                    script1 = "cd /tmp && rm -f /tmp/" + pkgFile + " && wget " + pkg;
+                    script2 = "dpkg -i /tmp/" + pkgFile + " && rm -f " + pkgFile;
+                }
             }
             else
             {
@@ -405,7 +413,7 @@ void RaptorMainWindow::pFinished(int exitCode, QProcess::ExitStatus exitStatus)
     }
     else if (mode == ModeConsole)
     {
-        close();
+        QTimer::singleShot(5000, this, SLOT(close()));
     }
     else if (mode == ModeInfo)
     {
