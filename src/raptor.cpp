@@ -7,6 +7,7 @@
 #include <QScrollBar>
 #include <QTimer>
 #include <QSettings>
+#include <QUrl>
 
 #define APP_TITLE tr("R(apt)or")
 #define SOURCES_LIST "/etc/apt/sources.list"
@@ -97,11 +98,33 @@ RaptorMainWindow::RaptorMainWindow(QWidget* parent, Qt::WindowFlags f)
     if ((install || remove) && (pkgs.count()>0))
     {
         if (install)
-            script2 = "apt-get -y install";
+        {
+            QString pkg = pkgs.at(0);
+            if(pkg.contains("://"))
+            {
+                QUrl url(pkg);
+                QString pkgFile = url.path();
+                int index = pkgFile.lastIndexOf('/');
+                if(index >= 0)
+                {
+                    pkgFile.remove(0, index + 1);
+                }
+                script1 = "cd /tmp && rm -f /tmp/" + pkgFile + " && wget " + pkg;
+                script2 = "dpkg -i /tmp/" + pkgFile + " && rm -f " + pkgFile;
+            }
+            else
+            {
+                script2 = "apt-get -y install";
+                foreach (QString pkg, pkgs)
+                    script2 = script2 + " " + pkg;
+            }
+        }
         if (remove)
+        {
             script2 = "apt-get -y remove";
-        foreach (QString pkg, pkgs)
-            script2 = script2 + " " + pkg;
+            foreach (QString pkg, pkgs)
+                script2 = script2 + " " + pkg;
+        }
     }
     if ((!script1.isEmpty()) || (!script2.isEmpty()))
     {
