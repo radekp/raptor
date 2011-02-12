@@ -103,7 +103,7 @@ RaptorMainWindow::RaptorMainWindow(QWidget* parent, Qt::WindowFlags f)
             if(pkg.endsWith(".deb"))
             {
                 QUrl url(pkg);
-                QString pkgFile = pkg;
+                QString pkgFile = url.path();
                 QString scheme = url.scheme();
                 if(scheme.count() == 0 || scheme == "file")
                 {
