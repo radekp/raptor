@@ -108,7 +108,8 @@ RaptorMainWindow::RaptorMainWindow(QWidget* parent, Qt::WindowFlags f)
                 QUrl url(pkg);
                 QString pkgFile = url.path();
                 QString scheme = url.scheme();
-                if(scheme.count() == 0 || scheme == "file")
+                bool fromFile = scheme.count() == 0 || scheme == "file";
+                if(fromFile)
                 {
                     script += "dpkg -i " + pkgFile + "\n";
                 }
@@ -120,7 +121,15 @@ RaptorMainWindow::RaptorMainWindow(QWidget* parent, Qt::WindowFlags f)
                         pkgFile.remove(0, index + 1);
                     }
                     script += "cd /tmp && rm -f /tmp/" + pkgFile + " && wget " + pkg + "\n";
-                    script += "dpkg -i /tmp/" + pkgFile + " && rm -f " + pkgFile + "\n";
+                    script += "dpkg -i /tmp/" + pkgFile + "\n";
+                }
+                script += "if [ ! $? -eq 0 ];\n";
+                script += "then\n";
+                script += "    apt-get update\n";
+                script += "    apt-get -y install -f\n";
+                script += "fi\n";
+                if(!fromFile) {
+                    script += "rm -f /tmp/" + pkgFile + "\n";
                 }
             }
             else
