@@ -90,7 +90,7 @@ private:
     QString outbuf;
     QStringList instPkgs;
     QString selname;
-    QString conscript;
+    QString script;
 
     void runProc(QString cmd);
     void endProc();

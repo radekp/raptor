@@ -90,11 +90,14 @@ RaptorMainWindow::RaptorMainWindow(QWidget* parent, Qt::WindowFlags f)
             if (tki>=ac) break;
         }
     }
+    else
+        return;
 
-    QString script1 = "";
-    QString script2 = "";
+    script = "#!/bin/sh\n";
+
     if (update)
-        script1 = "apt-get update";
+        script += "apt-get update\n";
+
     if ((install || remove) && (pkgs.count()>0))
     {
         if (install)
@@ -107,7 +110,7 @@ RaptorMainWindow::RaptorMainWindow(QWidget* parent, Qt::WindowFlags f)
                 QString scheme = url.scheme();
                 if(scheme.count() == 0 || scheme == "file")
                 {
-                    script1 = "dpkg -i " + pkgFile;
+                    script += "dpkg -i " + pkgFile + "\n";
                 }
                 else
                 {
@@ -116,43 +119,51 @@ RaptorMainWindow::RaptorMainWindow(QWidget* parent, Qt::WindowFlags f)
                     {
                         pkgFile.remove(0, index + 1);
                     }
-                    script1 = "cd /tmp && rm -f /tmp/" + pkgFile + " && wget " + pkg;
-                    script2 = "dpkg -i /tmp/" + pkgFile + " && rm -f " + pkgFile;
+                    script += "cd /tmp && rm -f /tmp/" + pkgFile + " && wget " + pkg + "\n";
+                    script += "dpkg -i /tmp/" + pkgFile + " && rm -f " + pkgFile + "\n";
                 }
             }
             else
             {
-                script2 = "apt-get -y install";
+                script += "apt-get -y install";
                 foreach (QString pkg, pkgs)
-                    script2 = script2 + " " + pkg;
+                    script += " " + pkg;
+                script += "\n";
             }
         }
         if (remove)
         {
-            script2 = "apt-get -y remove";
+            script += "apt-get -y remove";
             foreach (QString pkg, pkgs)
-                script2 = script2 + " " + pkg;
+                script += " " + pkg;
+            script += "\n";
         }
     }
-    if ((!script1.isEmpty()) || (!script2.isEmpty()))
+
+    QFile scriptFile("/tmp/raptor.sh");
+    if(!scriptFile.open(QIODevice::WriteOnly | QIODevice::Truncate))
     {
-        tabPkgs->setEnabled(false);
-        tabSrcs->setEnabled(false);
-        tabWidget->setCurrentWidget(tabOutp);
-        if ((!script1.isEmpty()) && (script2.isEmpty()))
-            conscript = script1;
-        else if ((script1.isEmpty()) && (!script2.isEmpty()))
-            conscript = script2;
-        else if ((!script1.isEmpty()) && (!script2.isEmpty()))
-            conscript = "sh -c \"" + script1 + "; " + script2 + "\"";
-        QTimer::singleShot(0, this, SLOT(sTimerEvent()));
+        QMessageBox::critical(this, tr("Raptor"), tr("Failed to open /tmp/raptor.sh"));
+        return;
     }
+    scriptFile.write(script.toLatin1().constData());
+    scriptFile.close();
+
+    QFile::setPermissions("/tmp/raptor.sh",
+                          QFile::ReadOwner | QFile::WriteOwner | QFile::ExeOwner |
+                          QFile::ReadGroup | QFile::ExeGroup |
+                          QFile::ReadOther | QFile::ExeOther);
+
+    tabPkgs->setEnabled(false);
+    tabSrcs->setEnabled(false);
+    tabWidget->setCurrentWidget(tabOutp);
+    QTimer::singleShot(0, this, SLOT(sTimerEvent()));
 }
 
 void RaptorMainWindow::sTimerEvent()
 {
     mode = ModeConsole;
-    runProc(conscript);
+    runProc("/tmp/raptor.sh");
 }
 
 void RaptorMainWindow::saveSettings()
